@@ -87,7 +87,7 @@ NCP 민간 클라우드에서 NKS 클러스터를 IaC로 프로비저닝하고, 
 | B3 | Subnet 사설LB | `ncloud_subnet` | `10.0.2.0/24`, private, `usage_type=LOADB` | 무료 |
 | B4 | Subnet 공인 | `ncloud_subnet` | `10.0.0.0/24`, public, `usage_type=GEN` | 무료 |
 | B5 | Subnet 공인LB | `ncloud_subnet` | `10.0.3.0/24`, public, `usage_type=LOADB` | 무료 |
-| B6 | NCR | `ncloud_container_registry` | name `nks-practice-cr` | 스토리지 실사용 |
+| B6 | NCR | **provider 미지원 → 콘솔 생성** | name `nkspracticecr`, endpoint를 이후 var로 주입 | 스토리지 실사용 |
 | B7 | Login key | `ncloud_login_key` | name `nks-practice-key` | 무료 |
 | B8 | ACG 노드 | `ncloud_access_control_group` (+rules) | 노드간 all, outbound all | 무료 |
 | B9 | ACG LB | `ncloud_access_control_group` (+rules) | inbound 80/443 from 0.0.0.0/0 | 무료 |
@@ -166,12 +166,13 @@ service.beta.kubernetes.io/ncloud-load-balancer-subnet-no: "<B5 subnet no>"
 | `NCR_ENDPOINT` | `xxx.kr.ncr.ntruss.com` |
 | `NCP_ACCESS_KEY` / `NCP_SECRET_KEY` | NCR 로그인 |
 
-### 6.2 트랙 A — NCP 네이티브 (2차 구현, 콘솔 생성)
-- SourceCommit: 이 레포 미러 또는 소스 저장소
-- SourceBuild: `app/` Dockerfile 빌드 → NCR push. 빌드환경에 `APP_VERSION` 주입
-- SourcePipeline: SourceBuild 트리거 → 배포 스테이지
-  - 배포 방식: SourceBuild 후속 스텝에서 `ncp-iam-authenticator` + `kubectl set image deployment/nks-demo ...`
-- provider 미지원 → 콘솔 생성 과정을 `docs/track-a.md`에 스크린샷/절차로 기록
+### 6.2 트랙 A — NCP 네이티브 (2차 구현)
+provider가 Source* 전부 지원 → Terraform으로 구성 (별도 스택 `terraform/pipeline`):
+- `ncloud_sourcecommit_repository` — 레포 미러 또는 소스 저장소
+- `ncloud_sourcebuild_project` — `app/` Dockerfile 빌드 → NCR push, `APP_VERSION` 주입
+- `ncloud_sourcedeploy_project` + `_stage` + `_stage_scenario` — NKS 배포 시나리오
+- `ncloud_sourcepipeline_project` — SourceBuild → SourceDeploy 연결, 트리거
+- 콘솔에서만 되는 부분은 `docs/track-a.md`에 절차 기록
 
 ---
 
@@ -192,8 +193,8 @@ service.beta.kubernetes.io/ncloud-load-balancer-subnet-no: "<B5 subnet no>"
 
 | M | 내용 | Done 기준 |
 |---|------|-----------|
-| M0 | 사전 준비 | 인증키 발급, CLI 4종 설치 확인, `terraform version` OK |
-| M1 | bootstrap 스택 | `terraform apply` 성공, VPC/서브넷 4/NCR/ACG 생성 확인, `docker login` NCR 성공 |
+| M0 | 사전 준비 | 인증키 발급, CLI 설치 확인 ✅(terraform/kubectl/helm/ncp-iam-authenticator/docker), env var 인식 |
+| M1 | bootstrap 스택 | `terraform apply` 성공, VPC/서브넷 4/login key/ACG 2 생성 확인. NCR 콘솔 생성 + `docker login` 성공 |
 | M2 | 샘플 앱 | 로컬 `docker run` → `/`, `/healthz`, `/work` 정상. 이미지 NCR push 성공 |
 | M3 | cluster 스택 | `terraform apply` 성공, `kubectl get nodes` Ready 2, NAT 경유 인터넷 OK |
 | M4 | 앱 수동 배포 | Ingress Controller + 앱 배포, 외부 URL로 `/` 응답, LB 어노테이션 실험 문서화 |
@@ -217,8 +218,9 @@ ncp-nks-pipeline-practice/
 ├── .github/workflows/
 │   └── build-deploy.yml
 ├── terraform/
-│   ├── bootstrap/               ← main.tf, variables.tf, outputs.tf, versions.tf
-│   └── cluster/                 ← main.tf, variables.tf, outputs.tf, versions.tf
+│   ├── bootstrap/               ← 상시: VPC/서브넷/login key/ACG
+│   ├── cluster/                 ← 세션별: NAT GW/NKS 클러스터/노드풀
+│   └── pipeline/                ← 트랙 A: SourceCommit/Build/Deploy/Pipeline
 ├── app/
 │   ├── main.py
 │   ├── requirements.txt
@@ -262,9 +264,8 @@ ncp-nks-pipeline-practice/
 | NAT Gateway 깜빡하고 안 지움 | cluster 스택에 포함 → `terraform destroy`로 같이 제거 |
 | TF state / pem / kubeconfig 커밋 사고 | `.gitignore` + 커밋 전 `git status` 확인, pre-commit 훅 검토 |
 | NKS 노드풀 min 1 → 완전 정지 불가 | 세션 종료 시 클러스터 자체 destroy |
-| provider가 SourcePipeline 미지원 | 트랙 A는 콘솔 + 절차 문서화로 진행 |
 | 크레딧 조기 소진 | 매일 요금 조회, 세션당 예산 상한, 만료 D-7 알림 |
-| k8s 버전 / product_code 값 변경 | apply 직전 `ncloud` CLI 또는 콘솔로 유효값 재확인 |
+| k8s 버전 / product_code 값 변경 | apply 직전 data source(`ncloud_nks_versions`, `ncloud_nks_server_products`)로 재확인 |
 
 ---
 
@@ -273,5 +274,6 @@ ncp-nks-pipeline-practice/
 - [ ] TF state: 로컬 vs OBS 백엔드 — 1차는 로컬로 시작, M1 이후 판단
 - [ ] Ingress: nginx-ingress 우선, NCP ALB Ingress Controller는 M4 확장 과제로
 - [ ] 서브계정 생성 여부 — 메인 계정 키로 시작 가능하나 서브계정 권장
-- [ ] `product_code` (s2-g2-h50) 의 실제 NKS API 코드값 — apply 전 조회
+- [x] `product_code` — cluster 스택에서 `data.ncloud_nks_server_products` 로 `s2-g2-h50` 필터링해 해결
+- [x] NCR — provider 미지원 확인, 콘솔 생성 후 endpoint를 var로 주입
 - [ ] 도메인: nip.io / sslip.io 사용 vs LB IP 직접
