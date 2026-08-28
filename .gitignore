@@ -16,3 +16,11 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
+.terraform.lock.hcl
