@@ -1,0 +1,22 @@
+# M4 실험용 — Service type=LoadBalancer 로 NCP LB 직접 생성.
+# ⚠️ 이 LB 는 Terraform state 밖. 실습 후 반드시 `kubectl delete -f k8s/service-lb.yaml`.
+# <LB_PUBLIC_SUBNET_NO> 는 bootstrap output subnet_ids["lb_public"] 값으로 치환.
+apiVersion: v1
+kind: Service
+metadata:
+  name: nks-demo-lb
+  namespace: demo
+  annotations:
+    service.beta.kubernetes.io/ncloud-load-balancer-internal: "false"
+    service.beta.kubernetes.io/ncloud-load-balancer-size: "SMALL"
+    service.beta.kubernetes.io/ncloud-load-balancer-layer-type: "l4"
+    service.beta.kubernetes.io/ncloud-load-balancer-subnet-no: "<LB_PUBLIC_SUBNET_NO>"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app: nks-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

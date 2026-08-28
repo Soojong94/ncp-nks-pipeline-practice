@@ -2,7 +2,7 @@
 
 > Spec-driven. 이 문서가 단일 진실. 코드/Terraform은 이 스펙을 구현할 뿐이며,
 > 스펙과 어긋나면 코드가 아니라 이 문서를 먼저 고친다.
-> 상태: **DRAFT — 구현 시작 전**
+> 상태: **코드 작성 완료 (M0~M10 아티팩트 준비됨), apply 대기.** 진행: [`docs/CURRICULUM.md`](docs/CURRICULUM.md)
 
 ---
 
@@ -42,7 +42,7 @@ NCP 민간 클라우드에서 NKS 클러스터를 IaC로 프로비저닝하고, 
 | 노드 수 | 2 (고정, autoscale off — HPA 실습 시 노드풀 min/max 조정) |
 | k8s 버전 | apply 시점 NKS 지원 최신 −1 |
 | Terraform | >= 1.6, provider `NaverCloudPlatform/ncloud` >= 3.x |
-| 예산 가드 | 실습일당 8,000~15,000원, 세션 종료 시 필수 `make down` |
+| 예산 가드 | 실습일당 8,000~15,000원, 세션 종료 시 필수 `bash scripts/down.sh` |
 
 ---
 
@@ -99,8 +99,8 @@ NCP 민간 클라우드에서 NKS 클러스터를 IaC로 프로비저닝하고, 
 |---|--------|---------------|----------|-----------|
 | C1 | NAT Gateway | `ncloud_nat_gateway` | 공인 서브넷(B4), zone KR-2 | 수백원 |
 | C2 | Route (private→NAT) | `ncloud_route` | private RT, `0.0.0.0/0`→NAT | 무료 |
-| C3 | NKS 클러스터 | `ncloud_nks_cluster` | name `nks-practice`, subnet B2, `lb_private_subnet_no`=B3, `lb_public_subnet_no`=B5, zone KR-2, `public_network=false`, k8s ver | ~2,400원 |
-| C4 | NKS 노드풀 | `ncloud_nks_node_pool` | name `np-main`, `node_count=2`, `product_code`=s2-g2-h50, login key B7 | ~5,700원 |
+| C3 | NKS 클러스터 | `ncloud_nks_cluster` | name `nks-practice-nks`, subnet B2, `lb_private_subnet_no`=B3, `lb_public_subnet_no`=B5, zone KR-2, `hypervisor_code=KVM`, `public_network=true`, `kube_network_plugin=cilium`, k8s ver = data source | ~2,400원 |
+| C4 | NKS 노드풀 | `ncloud_nks_node_pool` | name `np-main`, `node_count=2`, `server_spec_code=s2-g2-h50`, `software_code`=data source | ~5,700원 |
 
 ### 4.3 클러스터 내부 (helm / kubectl / manifest)
 
@@ -217,7 +217,7 @@ ncp-nks-pipeline-practice/
 ├── spec.md                      ← 이 문서 (단일 진실)
 ├── CLAUDE.md                    ← 작업 규칙
 ├── README.md
-├── Makefile                     ← up / down / kubeconfig / clean-k8s-lb
+├── scripts/                    ← ncloud-env.sh · up.sh · down.sh · kubeconfig.sh · addons.sh
 ├── .github/workflows/
 │   └── build-deploy.yml
 ├── terraform/
@@ -228,17 +228,15 @@ ncp-nks-pipeline-practice/
 │   ├── main.py
 │   ├── requirements.txt
 │   └── Dockerfile
-├── k8s/
-│   ├── namespace.yaml
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── service-lb.yaml
-│   ├── ingress.yaml
-│   └── hpa.yaml
+├── k8s/                         ← ArgoCD source path (kustomization.yaml)
+│   ├── kustomization.yaml
+│   ├── namespace.yaml · deployment.yaml · service.yaml · ingress.yaml · hpa.yaml
+│   └── experiments/service-lb.yaml   ← M4 수동 실험 (ArgoCD 제외)
 ├── argocd/
 │   └── application.yaml
 └── docs/
-    ├── PLAN.md
+    ├── CURRICULUM.md            ← 따라하기 가이드 (M0~M10)
+    ├── PLAN.md · ENV.md
     ├── runbook.md               ← 세션 시작/종료 절차
     ├── track-a.md               ← NCP 네이티브 파이프라인 기록
     └── notes.md                 ← NCP 특이사항 / 배운 점
@@ -263,7 +261,7 @@ ncp-nks-pipeline-practice/
 
 | 리스크 | 대응 |
 |--------|------|
-| k8s 생성 LB/PV가 destroy 후 고아 → 과금 지속 | `make down`이 `kubectl delete svc,ingress,pvc --all --all-namespaces` 선행 |
+| k8s 생성 LB/PV가 destroy 후 고아 → 과금 지속 | `bash scripts/down.sh`이 `kubectl delete svc,ingress,pvc --all --all-namespaces` 선행 |
 | NAT Gateway 깜빡하고 안 지움 | cluster 스택에 포함 → `terraform destroy`로 같이 제거 |
 | TF state / pem / kubeconfig 커밋 사고 | `.gitignore` + 커밋 전 `git status` 확인, pre-commit 훅 검토 |
 | NKS 노드풀 min 1 → 완전 정지 불가 | 세션 종료 시 클러스터 자체 destroy |

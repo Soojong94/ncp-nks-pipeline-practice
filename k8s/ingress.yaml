@@ -1,0 +1,20 @@
+# host 는 M4 에서 ingress-nginx LB 의 EXTERNAL-IP 를 확인해
+# <LB_IP>.sslip.io 로 치환 (또는 실제 도메인).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nks-demo
+  namespace: demo
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: nks-demo.127-0-0-1.sslip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nks-demo
+                port:
+                  number: 80

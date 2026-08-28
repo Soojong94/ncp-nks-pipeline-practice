@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nks-demo
+  namespace: demo
+  labels:
+    app: nks-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nks-demo
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: nks-demo
+    spec:
+      imagePullSecrets:
+        - name: ncr
+      containers:
+        - name: app
+          # 태그는 GitHub Actions(build-deploy.yml)가 git short sha 로 치환.
+          image: nkspracticecr.kr.ncr.ntruss.com/nks-demo:bootstrap
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10

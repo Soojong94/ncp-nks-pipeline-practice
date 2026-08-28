@@ -36,7 +36,7 @@
 | **S4** | M9 | 유료 | 3~4시간 |
 | **S5** | M10 | 무료 | — |
 
-- 한 세션을 하루에 다 못 끝내면: 그날 `make down` → 다음날 `make up` 후 이어서.
+- 한 세션을 하루에 다 못 끝내면: 그날 `bash scripts/down.sh` → 다음날 `bash scripts/up.sh` 후 이어서.
   bootstrap·NCR·git에 상태가 다 있으므로 클러스터는 언제든 재생성 가능.
 - 집중 스프린트로 2~3일 연속 켜두는 것도 가능 (3일 ≈ 90,000원). 기본은 세션 종료 시 destroy.
 
@@ -51,17 +51,17 @@
 ■ 세션 시작
   cd <repo>
   source scripts/ncloud-env.sh
-  make up                    # cluster apply + kubeconfig
+  bash scripts/up.sh          # cluster apply + kubeconfig
   kubectl get nodes          # Ready 2 확인
-  make bootstrap-addons      # imagePullSecret, ingress, metrics-server, argocd 재설치
+  bash scripts/addons.sh     # imagePullSecret, ingress, metrics-server, argocd
 
 ■ 세션 종료 (반드시)
-  make down                  # k8s LB/PVC 정리 → cluster destroy
+  bash scripts/down.sh        # k8s LB/PVC 정리 -> cluster destroy
   # NCP 콘솔에서 Server/LB/NAT/NKS 목록 비었는지 확인
   # 비용 로그 기록
 ```
 
-> `make` 타깃은 M3에서 Makefile을 만들며 하나씩 채운다.
+> `scripts/*.sh` 는 S1(M3 준비)에서 이미 작성돼 있다. (make 미설치 환경이라 셸 스크립트)
 
 ---
 
@@ -324,7 +324,7 @@ kubeconfig 를 발급해 `kubectl get nodes` 가 Ready 2 를 보인다. 세션 �
 
 3. **kubeconfig**:
    ```bash
-   make kubeconfig      # data source 또는 아래 수동
+   bash scripts/kubeconfig.sh
    # 수동: terraform output → clusterUuid → ncp-iam-authenticator 로 kubeconfig 작성
    export KUBECONFIG=$PWD/kubeconfig
    kubectl get nodes -o wide
@@ -335,7 +335,7 @@ kubeconfig 를 발급해 `kubectl get nodes` 가 Ready 2 를 보인다. 세션 �
    kubectl run neti --rm -it --image=busybox --restart=Never -- wget -qO- https://ifconfig.io
    ```
 
-5. **Makefile 완성** — `up`, `down`, `kubeconfig`, `clean-k8s-lb`, `bootstrap-addons` 타깃.
+5. **scripts 점검** — `up.sh`/`down.sh`/`kubeconfig.sh`/`addons.sh` 동작 확인 (이미 작성됨)
 
 ### 검증 (Done)
 - [ ] `terraform -chdir=terraform/cluster apply` 성공
@@ -345,7 +345,7 @@ kubeconfig 를 발급해 `kubectl get nodes` 가 Ready 2 를 보인다. 세션 �
 
 ### 정리 (세션 종료 시 반드시)
 ```bash
-make down
+bash scripts/down.sh
 #  kubectl delete ingress,svc --all -A ; kubectl delete pvc --all -A
 #  terraform -chdir=terraform/cluster destroy
 ```
@@ -387,7 +387,7 @@ Service `type=LoadBalancer` 어노테이션도 직접 실험한다.
 
 ### 실행
 
-1. `make up` (없으면) → `make bootstrap-addons` 로:
+1. `bash scripts/up.sh` (없으면) → `bash scripts/addons.sh` 로:
    - `kubectl create ns demo`
    - imagePullSecret:
      ```bash
@@ -426,7 +426,7 @@ Service `type=LoadBalancer` 어노테이션도 직접 실험한다.
 - [ ] 실험용 LB Service 삭제 확인
 
 ### 정리
-`make down`. **ingress-nginx LB 가 지워졌는지 콘솔 확인** (destroy 가 못 지움).
+`bash scripts/down.sh`. **ingress-nginx LB 가 지워졌는지 콘솔 확인** (destroy 가 못 지움).
 
 ### 비용
 세션(5h) ≈ 2,000~2,500원 (LB 1~2개 추가분 포함)
@@ -442,7 +442,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
 ### 이론
 - **GitOps**: 클러스터 상태의 소스는 Git. ArgoCD 가 diff 를 감지해 apply.
 - ArgoCD 자체는 클러스터에 산다 → **클러스터 destroy 시 함께 사라짐** →
-  매 세션 `make bootstrap-addons` 에서 재설치 (설정은 `argocd/` 에 매니페스트로).
+  매 세션 `bash scripts/addons.sh` 에서 재설치 (설정은 `argocd/` 에 매니페스트로).
 - `Application` CR: `source.repoURL`, `source.path=k8s/`, `destination.namespace=demo`,
   `syncPolicy.automated { prune: true, selfHeal: true }`.
 
@@ -451,7 +451,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
 
 ### 실행
 
-1. **ArgoCD 설치** (`make bootstrap-addons` 에 포함):
+1. **ArgoCD 설치** (`bash scripts/addons.sh` 에 포함):
    ```bash
    kubectl create ns argocd
    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
@@ -481,7 +481,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
 - [ ] `argocd/application.yaml` 커밋됨
 
 ### 정리
-`make down`. ArgoCD 는 클러스터와 함께 사라짐 (정상).
+`bash scripts/down.sh`. ArgoCD 는 클러스터와 함께 사라짐 (정상).
 
 ### 비용
 세션(6h) ≈ 2,500~3,000원
@@ -521,7 +521,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
      (`[skip ci]` 커밋 메시지로 루프 방지)
 
 3. **E2E 테스트**:
-   - `make up` (배포 검증용 클러스터)
+   - `bash scripts/up.sh` (배포 검증용 클러스터)
    - `app/main.py` 문구 수정 → commit & push
    - Actions 통과 → deployment.yaml 커밋 확인 → ArgoCD sync → `curl` 로 새 version 확인
 
@@ -532,7 +532,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
 - [ ] 무한 커밋 루프 없음
 
 ### 정리
-`make down`. (Actions 는 클러스터 무관하게 계속 동작)
+`bash scripts/down.sh`. (Actions 는 클러스터 무관하게 계속 동작)
 
 ### 비용
 세션(3h, 배포검증만) ≈ 1,200~1,500원 + GH Actions 무료분
@@ -556,7 +556,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
 
 ### 실행
 
-1. `make up` → `make bootstrap-addons`
+1. `bash scripts/up.sh` → `bash scripts/addons.sh`
 2. **metrics-server**:
    ```bash
    helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
@@ -582,7 +582,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
 - [ ] 결과 `docs/notes.md` 기록
 
 ### 정리
-`make down`. 노드풀 autoscale 설정 원복 확인.
+`bash scripts/down.sh`. 노드풀 autoscale 설정 원복 확인.
 
 ### 비용
 세션(4h, 부하 중 노드 증가분) ≈ 2,000~3,500원
@@ -624,7 +624,7 @@ Git 커밋 → 자동 sync 되는 흐름을 확인한다.
 - [ ] 두 방식 차이 `docs/notes.md` 정리
 
 ### 정리
-`make down`
+`bash scripts/down.sh`
 
 ### 비용
 M7 세션에 포함 시 추가 ~1,000원
@@ -659,7 +659,7 @@ SourceCommit / SourceBuild / SourceDeploy / SourcePipeline 을 Terraform(`terraf
 
 ### 실행
 
-1. `make up` (배포 대상 클러스터)
+1. `bash scripts/up.sh` (배포 대상 클러스터)
 2. `terraform -chdir=terraform/pipeline init && plan && apply`
    - SourceCommit repo 생성 → 코드 push (또는 GitHub 연동)
    - SourceBuild: Dockerfile → NCR push, `APP_VERSION` 주입
@@ -676,7 +676,7 @@ SourceCommit / SourceBuild / SourceDeploy / SourcePipeline 을 Terraform(`terraf
 
 ### 정리
 ```bash
-make down
+bash scripts/down.sh
 terraform -chdir=terraform/pipeline destroy   # SourceBuild/Pipeline 도 소액 과금 → destroy
 ```
 - SourceCommit 저장소는 무료 티어면 유지 가능. 판단해서 destroy.
@@ -695,7 +695,7 @@ terraform -chdir=terraform/pipeline destroy   # SourceBuild/Pipeline 도 소액 
 
 1. **전체 destroy**:
    ```bash
-   make down
+   bash scripts/down.sh
    terraform -chdir=terraform/pipeline destroy
    # bootstrap 유지 여부 결정:
    #   - 추가 실습 예정 → 유지 (무료)
@@ -736,31 +736,42 @@ terraform -chdir=terraform/pipeline destroy   # SourceBuild/Pipeline 도 소액 
 
 ---
 
-## 부록 B — 앱 코드 (M2 에서 생성)
+> 부록 B~F 의 파일은 **모두 미리 작성돼 있다** (`terraform validate` / `kustomize build` 통과).
+> 각 모듈에서 하는 일은 "작성"이 아니라 "값 치환 + apply + 검증".
 
-- `app/main.py` — FastAPI, `/` `/healthz` `/work`
-- `app/requirements.txt` — `fastapi`, `uvicorn[standard]`
-- `app/Dockerfile` — 멀티스테이지, `python:3.12-slim`, non-root, `APP_VERSION` ARG→ENV
+## 부록 B — 앱 코드 ✅작성됨
 
-## 부록 C — k8s 매니페스트 (M2 에서 생성)
+- `app/main.py` — FastAPI, `/` `/healthz` `/work?ms=`
+- `app/requirements.txt` — `fastapi==0.115.6`, `uvicorn[standard]==0.34.0`
+- `app/Dockerfile` — 멀티스테이지 `python:3.12-slim`, non-root(uid 10001), `APP_VERSION` ARG→ENV, 포트 8080
+- `app/.dockerignore`
 
-- `k8s/namespace.yaml` · `deployment.yaml` · `service.yaml` · `service-lb.yaml`
-  · `ingress.yaml` · `hpa.yaml`
+## 부록 C — k8s 매니페스트 ✅작성됨
 
-## 부록 D — cluster 스택 (S1 에서 작성, M3 에서 apply)
+- `k8s/kustomization.yaml` — ArgoCD source. `images[].newTag` 를 GHA 가 갱신
+- `k8s/{namespace,deployment,service,ingress,hpa}.yaml`
+- `k8s/experiments/service-lb.yaml` — M4 수동 실험용, `<LB_PUBLIC_SUBNET_NO>` 치환 필요
+- 치환 포인트: `ingress.yaml` host → `<LB_IP>.sslip.io`
+
+## 부록 D — cluster 스택 ✅작성됨 (M3 에서 apply)
 
 - `terraform/cluster/{versions,variables,main,outputs}.tf`
-- data: `ncloud_nks_versions`, `ncloud_nks_server_products`
+- data: `ncloud_nks_versions`, `ncloud_nks_server_images` (버전/OS 이미지 자동 해석)
 - resource: `ncloud_nat_gateway`, `ncloud_route`, `ncloud_nks_cluster`, `ncloud_nks_node_pool`
-- 원격 state: bootstrap output 을 `terraform_remote_state` 또는 data source 로 참조
+- bootstrap output 을 `terraform_remote_state` (로컬 state) 로 참조
+- ⚠️ apply 전 확인: `var.cluster_type` 유효값 (기본 `...G002`), `var.hypervisor_code` (기본 KVM)
 
-## 부록 E — GitHub Actions (M6 에서 생성)
+## 부록 E — GitHub Actions ✅작성됨
 
-- `.github/workflows/build-deploy.yml`
+- `.github/workflows/build-deploy.yml` — push(`app/**`) → build → NCR push → `kustomization.yaml` newTag 커밋(`[skip ci]`)
+- 필요 Secrets: `NCR_ENDPOINT`, `NCP_ACCESS_KEY`, `NCP_SECRET_KEY`
 
-## 부록 F — pipeline 스택 (S4 에서 작성, M9 에서 apply)
+## 부록 F — pipeline 스택 ✅작성됨 (M9 에서 apply, live 조정 예상)
 
 - `terraform/pipeline/{versions,variables,main,outputs}.tf`
+- `ncloud_sourcecommit_repository` / `_sourcebuild_project` / `_sourcedeploy_project(+stage,scenario)` / `_sourcepipeline_project`
+- ⚠️ `validate` 통과했으나 `platform.config` / `build_command` / scenario `manifest` 세부는
+  콘솔에서 1회 만들어보고 맞추는 게 빠름. M9 에서 확정.
 
 ## 부록 G — 명령어 치트시트
 
@@ -769,9 +780,9 @@ terraform -chdir=terraform/pipeline destroy   # SourceBuild/Pipeline 도 소액 
 source scripts/ncloud-env.sh
 
 # 세션
-make up            # cluster apply + kubeconfig
-make down          # k8s LB/PVC 정리 + cluster destroy
-make bootstrap-addons   # ns/secret/ingress/metrics-server/argocd
+bash scripts/up.sh            # cluster apply + kubeconfig
+bash scripts/down.sh          # k8s LB/PVC 정리 + cluster destroy
+bash scripts/addons.sh        # ns/secret/ingress/metrics-server/argocd
 
 # 확인
 kubectl get nodes -o wide
@@ -794,6 +805,6 @@ kubectl -n demo rollout undo deploy/nks-demo
 | 노드 NotReady | NAT 라우트 누락 → CNI 이미지 pull 실패. private RT 확인 |
 | 이미지 pull 실패 (ImagePullBackOff) | imagePullSecret 미생성 / endpoint 오타 / ns 불일치 |
 | LB EXTERNAL-IP `<pending>` 지속 | LB 서브넷 `usage_type=LOADB` 아님 / 서브넷 no 어노테이션 오타 / ACG |
-| `make down` 후에도 과금 | k8s 생성 LB 고아 → 콘솔 수동 삭제. NAT 남음 → destroy 재시도 |
+| `bash scripts/down.sh` 후에도 과금 | k8s 생성 LB 고아 → 콘솔 수동 삭제. NAT 남음 → destroy 재시도 |
 | HPA `<unknown>` | metrics-server 미설치 / `--kubelet-insecure-tls` 누락 |
 | ArgoCD sync 안 됨 | repoURL 접근 권한 (public 이므로 OK), path 오타, branch 불일치 |

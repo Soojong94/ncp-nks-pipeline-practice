@@ -1,0 +1,66 @@
+name: build-deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "app/**"
+      - ".github/workflows/build-deploy.yml"
+
+concurrency:
+  group: build-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # kustomization.yaml 태그 커밋
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version
+        id: ver
+        run: echo "VER=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to NCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.NCR_ENDPOINT }}
+          username: ${{ secrets.NCP_ACCESS_KEY }}
+          password: ${{ secrets.NCP_SECRET_KEY }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          push: true
+          build-args: |
+            APP_VERSION=${{ steps.ver.outputs.VER }}
+          tags: |
+            ${{ secrets.NCR_ENDPOINT }}/nks-demo:${{ steps.ver.outputs.VER }}
+            ${{ secrets.NCR_ENDPOINT }}/nks-demo:latest
+
+      - name: Bump image tag in kustomization
+        run: |
+          curl -sSLo /usr/local/bin/kustomize \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64" || true
+          cd k8s
+          # kustomize 바이너리가 없으면 yq/sed 폴백
+          if command -v kustomize >/dev/null; then
+            kustomize edit set image "${{ secrets.NCR_ENDPOINT }}/nks-demo:${{ steps.ver.outputs.VER }}"
+          else
+            sed -i "s/newTag:.*/newTag: ${{ steps.ver.outputs.VER }}/" kustomization.yaml
+          fi
+
+      - name: Commit manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add k8s/kustomization.yaml
+          if git diff --cached --quiet; then
+            echo "no manifest change"
+          else
+            git commit -m "ci: nks-demo image ${{ steps.ver.outputs.VER }} [skip ci]"
+            git push
+          fi

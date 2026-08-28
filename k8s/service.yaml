@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nks-demo
+  namespace: demo
+  labels:
+    app: nks-demo
+spec:
+  type: ClusterIP
+  selector:
+    app: nks-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

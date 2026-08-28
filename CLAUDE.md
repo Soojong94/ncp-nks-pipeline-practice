@@ -18,7 +18,7 @@ NCP NKS CI/CD 실습 레포. **Spec-driven** 으로 진행한다.
 ## 비용 가드레일
 
 - cluster 스택은 세션별 `apply`→실습→`destroy`. 절대 켜놓고 방치하지 않는다.
-- 세션 종료는 항상 `make down` (k8s LB/PVC 정리 → `terraform destroy`).
+- 세션 종료는 항상 `bash scripts/down.sh` (k8s LB/PVC 정리 → `terraform destroy`).
 - 새 과금 리소스를 스펙에 추가할 때는 24h 환산 비용을 §4 표에 함께 적는다.
 
 ## 절대 커밋 금지

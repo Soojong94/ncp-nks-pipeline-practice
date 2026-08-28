@@ -90,12 +90,12 @@ Route Table: VPC 생성 시 기본 public/private RT 자동. private RT → NAT 
 7. [ ] 트랙 B: GitHub Actions 빌드→push, ArgoCD 설치→sync
 8. [ ] 트랙 A: SourceBuild/SourcePipeline 구성
 9. [ ] 롤아웃/롤백, HPA 부하테스트
-10. [ ] `make down` (kubectl 정리 → cluster destroy) 검증
+10. [ ] `bash scripts/down.sh` (kubectl 정리 → cluster destroy) 검증
 11. [ ] docs에 실습 노트 정리
 
 ## 8. 비용 가드레일
 
-- 세션 시작 시각 메모, 종료 시 반드시 `make down`
+- 세션 시작 시각 메모, 종료 시 반드시 `bash scripts/down.sh`
 - 매일 아침 NCP 요금 조회 → 일별 사용액 확인
 - NAT Gateway는 cluster 스택에 포함 (destroy 시 같이 제거)
 - 크레딧: 40만원, 만료 2027-02. D-7 알림 설정

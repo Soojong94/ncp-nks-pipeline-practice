@@ -14,14 +14,14 @@ cd ../cluster && terraform apply
 #    시작 시각 기록: docs/notes.md 하단 로그
 
 # 3. kubeconfig
-make kubeconfig          # ncp-iam-authenticator 기반 kubeconfig 생성
+bash scripts/kubeconfig.sh   # ncp-iam-authenticator 기반 kubeconfig
 kubectl get nodes        # Ready 2 확인
 ```
 
 ## 세션 종료 (필수)
 
 ```bash
-make down
+bash scripts/down.sh
 #  ├─ kubectl delete ingress,svc --all --all-namespaces   (k8s생성 LB 제거)
 #  ├─ kubectl delete pvc --all --all-namespaces            (동적 PV 제거)
 #  ├─ (LB/PV 실제 삭제까지 대기)
