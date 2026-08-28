@@ -1,0 +1,18 @@
+# kubeconfig / 인증
+kubeconfig*
+*.kubeconfig
+.env
+*.pem
+*.key
+ncp-*.json
+
+# 빌드 산출물
+node_modules/
+dist/
+build/
+__pycache__/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
