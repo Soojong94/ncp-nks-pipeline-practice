@@ -4,6 +4,8 @@
 
 - Terraform 2스택: `bootstrap`(상시, 저비용) / `cluster`(세션별, apply→실습→destroy)
 - 클러스터/노드풀/LB/NAT는 매 세션 파괴
+- **크레딧 40만원, 만료 2027-02.** 6개월 분할 사용 → 세션별 destroy 전략 확정.
+  24/7 풀구성은 월 ~30만원이라 크레딧이 한 달 만에 소진됨.
 - destroy 전 `kubectl delete svc,ingress,pvc --all` 로 k8s가 만든 LB/블록스토리지 고아 방지
 - state 파일은 시크릿 포함 → `.gitignore` 처리 (로컬 state로 시작, 필요시 Object Storage 백엔드)
 
@@ -44,9 +46,8 @@ Route Table: VPC 생성 시 기본 public/private RT 자동. private RT → NAT 
 | NKS 노드풀 | `ncloud_nks_node_pool` | `node_count=2`, 소형 서버(2vCPU/4~8GB), autoscale off | ~4,000~7,000원/일 |
 | (k8s생성) LB | Service `type=LoadBalancer` 어노테이션 | 사설 or 공인 | ~500원/일 + 트래픽 |
 
-노드 서버 스펙 후보 (요금계산기로 확정):
-- Compact 2vCPU/4GB SSD — 최저가, 실습엔 빠듯
-- Standard 2vCPU/8GB SSD — 안정적, ArgoCD+앱+빌드 동시 여유
+노드 서버 스펙 **확정: `s2-g2-h50`** (2vCPU / 8GB / 50GB, 119원/hr, 상시 시 85,120원/월).
+2대 기준 노드값만 월 170,240원. ArgoCD + 앱 + metrics-server 여유.
 
 ## 4. 클러스터 내부 (Terraform 밖 — helm/kubectl/manifest)
 
@@ -97,5 +98,6 @@ Route Table: VPC 생성 시 기본 public/private RT 자동. private RT → NAT 
 - 세션 시작 시각 메모, 종료 시 반드시 `make down`
 - 매일 아침 NCP 요금 조회 → 일별 사용액 확인
 - NAT Gateway는 cluster 스택에 포함 (destroy 시 같이 제거)
-- 크레딧 만료 D-7 알림 설정
-- 예상: 실습일당 8,000~15,000원 × 실습일수. 40만원이면 25~40 세션.
+- 크레딧: 40만원, 만료 2027-02. D-7 알림 설정
+- 예상: 실습일당 8,000~15,000원 × 실습일수. 40만원이면 약 25~40 세션.
+- 풀구성 24/7 = 월 ~30만원 → 절대 켜놓고 방치 금지
