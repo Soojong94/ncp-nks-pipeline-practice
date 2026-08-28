@@ -191,19 +191,22 @@ provider가 Source* 전부 지원 → Terraform으로 구성 (별도 스택 `ter
 
 ## 8. 마일스톤 & 완료 기준
 
+> 상세 진행 가이드는 [`docs/CURRICULUM.md`](docs/CURRICULUM.md). 아래는 요약.
+> 세션 묶음: S1(M0-2 무료) / S2(M3-5) / S3(M6-8) / S4(M9) / S5(M10).
+
 | M | 내용 | Done 기준 |
 |---|------|-----------|
-| M0 | 사전 준비 | 인증키 발급, CLI 설치 확인 ✅(terraform/kubectl/helm/ncp-iam-authenticator/docker), env var 인식 |
-| M1 | bootstrap 스택 | `terraform apply` 성공, VPC/서브넷 4/login key/ACG 2 생성 확인. NCR 콘솔 생성 + `docker login` 성공 |
-| M2 | 샘플 앱 | 로컬 `docker run` → `/`, `/healthz`, `/work` 정상. 이미지 NCR push 성공 |
-| M3 | cluster 스택 | `terraform apply` 성공, `kubectl get nodes` Ready 2, NAT 경유 인터넷 OK |
-| M4 | 앱 수동 배포 | Ingress Controller + 앱 배포, 외부 URL로 `/` 응답, LB 어노테이션 실험 문서화 |
-| M5 | 트랙 B | `app/` 수정 push → GHA 빌드/푸시 → ArgoCD auto-sync → 새 version 반영 확인 |
-| M6 | HPA | `/work` 부하 → replica 2→5 스케일아웃, 부하 종료 후 스케일인 확인 |
-| M7 | 롤백 | 잘못된 이미지 배포 → `kubectl rollout undo` 또는 ArgoCD history 롤백 확인 |
-| M8 | 트랙 A | SourceBuild/Pipeline 구성, commit→배포 자동화 1회 성공, `docs/track-a.md` 완성 |
-| M9 | teardown | `make down` 실행 → k8s LB/PVC 정리 → `cluster` destroy 완료, 잔여 리소스 0, 콘솔에서 과금 리소스 없음 확인 |
-| M10 | 마무리 | `docs/notes.md`에 배운 점/NCP 특이사항 정리, README 갱신 |
+| M0 | 준비 | 인증키 발급, CLI 설치 확인 ✅, `source scripts/ncloud-env.sh` 인식, `bootstrap init` OK |
+| M1 | bootstrap 인프라 | `apply` 성공(VPC/서브넷4/login key/ACG2). NCR 콘솔 생성 + `docker login` 성공 |
+| M2 | 샘플 앱 + 컨테이너 | 로컬 `docker run` → `/`,`/healthz`,`/work` 정상. 이미지 NCR push 성공 |
+| M3 | NKS 클러스터 | cluster `apply` 성공, `kubectl get nodes` Ready 2, NAT 경유 인터넷 OK |
+| M4 | 앱 수동 배포 + 노출 | ingress-nginx + 앱 배포, `curl http://<ip>.sslip.io/` 응답, LB 어노테이션 실험 기록 |
+| M5 | GitOps: ArgoCD | Application `nks-demo` Synced/Healthy, git push → 자동 반영 |
+| M6 | CI: GitHub Actions | `app/` push → 빌드/NCR push → manifest 커밋 → ArgoCD 배포, 루프 없음 |
+| M7 | HPA + 부하 | `/work` 부하 → replica 2→5, 종료 후 스케일인. (선택) 노드 오토스케일 |
+| M8 | 롤아웃 / 롤백 | 깨진 배포 무중단 확인, `rollout undo` + git revert 두 방식 복구 |
+| M9 | 트랙 A: 네이티브 파이프라인 | `terraform/pipeline apply`, 커밋→빌드→배포 1회 성공, `docs/track-a.md` 비교표 |
+| M10 | 정리 & teardown | 전체 destroy, 콘솔 과금 리소스 0, `notes.md`/`README`/`track-a.md` 완성, 비용 회고 |
 
 ---
 

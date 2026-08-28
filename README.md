@@ -9,6 +9,16 @@ NCP(민간) NKS 소규모 클러스터에 실제 CI/CD 파이프라인을 구축
 - Container Registry (NCR)
 - 샘플 웹앱: Deployment + Service(LoadBalancer) + Ingress
 
+## 문서
+
+| 문서 | 역할 |
+|------|------|
+| [spec.md](spec.md) | 사양 (단일 진실) — 리소스 인벤토리, 마일스톤, 컨벤션 |
+| [docs/CURRICULUM.md](docs/CURRICULUM.md) | **따라하기 가이드** — 모듈 M0~M10, 명령어·검증·teardown·비용 |
+| [docs/PLAN.md](docs/PLAN.md) | 배경 / 비용 산정 |
+| [docs/runbook.md](docs/runbook.md) | 세션 시작·종료 절차 |
+| [CLAUDE.md](CLAUDE.md) | 작업 규칙 |
+
 ## 실습 트랙
 
 | 트랙 | 경로 | 내용 |
