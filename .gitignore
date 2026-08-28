@@ -23,4 +23,4 @@ Thumbs.db
 *.tfstate.*
 *.tfvars
 crash.log
-.terraform.lock.hcl
+# .terraform.lock.hcl 은 커밋 (provider 버전 고정)
