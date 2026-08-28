@@ -1,11 +1,10 @@
-# ncp-nks-pipeline
+# ncp-nks-pipeline-practice
 
-NCP(민간) NKS 소규모 클러스터에 CI/CD 파이프라인 실습.
-목표: "NCP k8s 생태계가 AWS와 뭐가 다른가"를 손으로 겪어보고 레퍼런스 남기기.
+NCP(민간) NKS 소규모 클러스터에 실제 CI/CD 파이프라인을 구축하는 실습.
 
 ## 구성
 
-- NKS 클러스터 1개, 노드풀 2vCPU/8GB × 2 (또는 micro)
+- NKS 클러스터 1개, 노드풀 소형 노드 × 2
 - VPC / Subnet (LB 전용 서브넷 별도)
 - Container Registry (NCR)
 - 샘플 웹앱: Deployment + Service(LoadBalancer) + Ingress
@@ -17,25 +16,44 @@ NCP(민간) NKS 소규모 클러스터에 CI/CD 파이프라인 실습.
 | A | `pipeline/ncp-native/` | SourceCommit → SourceBuild → SourcePipeline → NCR → NKS |
 | B | `pipeline/github-actions/` | GitHub Actions + ncp-iam-authenticator + ArgoCD (GitOps) |
 
-## 학습 포인트 (AWS 대비 차이)
+## 다뤄볼 것
 
-- LB 연동: `service.beta.kubernetes.io/ncloud-load-balancer-*` annotation
-- 인증: sub account + `ncp-iam-authenticator`, kubeconfig exec
-- 스토리지: Block Storage CSI / NAS(NFS) CSI, StorageClass 파라미터
-- Ingress: NCP ALB Ingress Controller vs nginx ingress
+- NKS 클러스터 / 노드풀 프로비저닝, kubeconfig (`ncp-iam-authenticator`)
+- NCR 이미지 빌드·푸시, imagePullSecret
+- LB 연동 annotation (`service.beta.kubernetes.io/ncloud-load-balancer-*`)
+- Ingress Controller (NCP ALB or nginx)
+- Block Storage / NAS CSI, StorageClass
+- 배포 자동화: SourcePipeline vs GitHub Actions + ArgoCD
+- 롤아웃/롤백, 헬스체크, HPA
 
-## 크레딧 관리
+## 크레딧 관리 (핵심)
 
-- 노드 2대 + LB 상시 ≈ 하루 1만원 안쪽
-- 실습 종료 시 LB / Public IP / 노드풀 삭제
+40만원 / 실습기간. **24시간 켜두면 안 됨.**
+
+대략 일 비용 (소형 노드 2대 상시 기준, 검증 필요):
+
+| 항목 | 하루 |
+|------|------|
+| NKS 컨트롤플레인 | ~2,400원 |
+| 워커노드 소형 × 2 | ~4,000~7,000원 |
+| Load Balancer | ~500원 |
+| Public IP / 블록스토리지 등 | ~500원 |
+| **합계** | **약 8,000~11,000원 (Standard 노드면 15,000원+)** |
+
+→ 24/7이면 하루 1~2만원. **세션 단위로 켜고 끄는 게 정석.**
+
+- 노드풀 최소 노드 수는 1 → 완전히 멈추려면 **클러스터 삭제**
+- 실습 종료 시: LB → 노드풀/클러스터 → Public IP 순으로 삭제
+- 모든 리소스는 git + 셋업 스크립트로 재현 가능하게 (재생성 15~20분)
 - 요금 조회에서 일별 사용액 확인, 크레딧 만료일 체크
+- 실제 요금은 NCP 요금계산기로 노드 스펙 확정 후 재산정
 
 ## 디렉토리
 
 ```
-app/                    샘플 애플리케이션 소스
-k8s/                    매니페스트 (deployment, service, ingress)
-pipeline/ncp-native/    트랙 A
+app/                     샘플 애플리케이션 소스
+k8s/                     매니페스트 (deployment, service, ingress)
+pipeline/ncp-native/     트랙 A
 pipeline/github-actions/ 트랙 B
-docs/                   실습 노트, 차이점 정리
+docs/                    실습 노트
 ```
